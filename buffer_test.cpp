@@ -1,3 +1,4 @@
+#include <ncurses.h>
 #include <iostream>
 #include <string>
 using namespace std;
@@ -10,39 +11,63 @@ class TextBuffer {
 	public:
 		TextBuffer(): cursor(0) {}
 
-	void insert(const string& text) {
-		buffer.insert(cursor, text);
-		cursor += text.length();
+	void insert(char ch) {
+		buffer.insert(cursor, 1, ch);
+		cursor++;
 	}
 
-	void deleteChar(size_t count) {
-		if (cursor >= count) {
-		buffer.erase(cursor-count, count);
-		cursor -= count;
+	void deleteChar() {
+		if (cursor > 0) {
+		buffer.erase(cursor-1, 1);
+		cursor -= 1;
 		}
 	}
-
-	void moveCursor(size_t position) {
-		if (position <= buffer.length()) {
-			cursor = position;
-		}
+	
+	void MoveCursorLeft() {
+		if (cursor > 0) cursor--;
 	}
 
-	void printBuffer() {
-		cout << buffer << endl;
-		cout << cursor << endl;
+	void MoveCursorRight() {
+		if (cursor < buffer.length()) cursor++;
+	}
+
+	void render() {
+		clear();
+		for (size_t i = 0; i < buffer.size(); i++) {
+			mvaddch(0, i, buffer[i]);
+		}
+		move(0, cursor);
+		refresh();
 	}
 };
 
 int main () {
+	initscr();
+	noecho();
+	keypad(stdscr, TRUE);
+	curs_set(1);
+
 	TextBuffer x;
+	int ch;
 
-	x.insert("Hello");
-	x.insert("World");
+	while((ch = getch()) != 27) {
+		switch(ch) {
+			case KEY_LEFT:
+				x.MoveCursorLeft();
+				break;
+			case KEY_RIGHT:
+				x.MoveCursorRight();
+				break;
+			case KEY_BACKSPACE:
+				x.deleteChar();
+				break;
+			default:
+				if (ch >= 32 && ch <= 126) x.insert((char)ch);
+		}
+		x.render();
+	}
 
-	x.deleteChar(1);
-
-	x.printBuffer();
-
+	endwin();
 	return 0;
+
 }
