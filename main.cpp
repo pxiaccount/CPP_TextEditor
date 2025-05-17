@@ -1,6 +1,9 @@
 #include <ncurses.h>
 #include <vector>
 #include <string>
+#include <fstream>
+#include <iostream>
+using namespace std;
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -74,25 +77,71 @@ public:
         }
     }
 
-    void render(const std::string& status = "") const {
-        clear();
-        for (size_t i = 0; i < lines.size(); i++) {
-            mvprintw(i, 0, "%s", lines[i].c_str());
-        }
-        mvprintw((int)lines.size(), 0, "%s", status.c_str());
-        move(cursorY, cursorX);
-        refresh();
+void render(const std::string& status = "") const {
+    clear();
+
+    int rows, cols;
+    getmaxyx(stdscr, rows, cols);
+
+    for (size_t i = 0; i < lines.size() && i < (size_t)(rows - 2); ++i) {
+        mvprintw(i, 0, "%s", lines[i].c_str());
+    }
+
+    mvhline(rows - 2, 0, '-', cols);
+    mvprintw(rows - 2, 2, "%s", status.c_str());
+
+    mvhline(rows - 1, 0, ' ', cols);
+    mvprintw(rows - 1, 0, "F2: Save | Ctrl C: Exit");
+
+    move(cursorY, cursorX);
+    refresh();
+}
+
+    bool loadFromFile(const string& filename) {
+        ifstream inFile(filename);
+    	if (!inFile) return false;
+
+    	lines.clear();
+        cursorX = 0;
+        cursorY = 0;
+
+	string line;
+	while (getline(inFile, line)) {
+        	lines.push_back(line);
+    	}
+	if (lines.empty()) lines.push_back("");
+	return true;
+    }
+
+    bool saveToFile(const string& filename) const {
+    	ofstream outFile(filename);
+    	if (!outFile) return false;
+
+    	for (const auto& line : lines) {
+        	outFile << line << '\n';
+    	}
+    	return true;
     }
 };
 
 int main() {
+    string filename;
+    cout << "Enter file name to open or create: ";
+    getline(cin, filename);
+
     initscr();
     noecho();
     keypad(stdscr, TRUE);
     curs_set(1);
 
     TextBuffer editor;
-    std::string status;
+    string status;
+
+    if (editor.loadFromFile(filename))
+        status = "Loaded " + filename;
+    else {
+        status = "New file: " + filename;
+    }
 
     int ch;
     editor.render(status);
@@ -106,8 +155,11 @@ int main() {
             case KEY_BACKSPACE:
             case 127: editor.deleteChar(); break;
             case '\n': editor.insert('\n'); break;
-            case CTRL_KEY('s'):
-                status = "Save failed.";
+            case KEY_F(2):
+                if (editor.saveToFile(filename))
+                    status = "Saved to " + filename;
+                else
+                    status = "Save failed.";
                 break;
             default:
                 if (ch >= 32 && ch <= 126)
