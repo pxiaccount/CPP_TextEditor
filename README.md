@@ -2,6 +2,12 @@
 
 A text editor created using C++
 
+## Warning: This program only been tested on Linux
+
+## Prerequisites
+- g++ compiler
+- ncurses library
+
 ## How to run it
 
 1. Clone repository to your local files
